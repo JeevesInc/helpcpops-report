@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payments Ops Report — Week of Jun 22, 2026</title>
+<script async defer src="https://accounts.google.com/gsi/client"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink:#1a1a18; --ink-mid:#5f5e5a; --ink-light:#888780; --ink-faint:#b4b2a9;
+    --bg:#f6f5f1; --bg-card:#ffffff; --bg-muted:#f2f1ed;
+    --border:#e2e0d8; --border-light:#eceae4;
+    --accent:#1a3d6b; --accent-mid:#2d5a8e; --accent-bg:#f0f4f9;
+    --pos:#1a5c45; --neg:#5c1f1f; --warn:#5c3d00;
+  }
+  body.login-mode {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    background:linear-gradient(135deg,var(--accent) 0%,#0f6e56 100%);
+    min-height:100vh; display:flex; align-items:center; justify-content:center; margin:0; padding:20px;
+  }
+  body.report-mode {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:14px; line-height:1.6;
+  }
+  #login-screen{display:none;} #report-screen{display:none;}
+  body.login-mode #login-screen{display:flex;align-items:center;justify-content:center;width:100%;}
+  body.login-mode #report-screen{display:none;}
+  body.report-mode #login-screen{display:none;}
+  body.report-mode #report-screen{display:block;}
+  .login-container{background:var(--bg-card);border-radius:16px;padding:48px 56px;box-shadow:0 20px 60px rgba(0,0,0,0.3);max-width:420px;width:100%;text-align:center;}
+  .login-icon{font-size:4.5em;margin-bottom:24px;display:block;}
+  .login-title{font-size:26px;font-weight:700;color:var(--ink);margin-bottom:8px;letter-spacing:-0.3px;}
+  .login-subtitle{font-size:13px;color:var(--ink-light);line-height:1.7;margin-bottom:32px;}
+  .login-divider{border:none;border-top:1px solid var(--border);margin:32px 0;}
+  #g_id_render{display:flex;justify-content:center;margin:0 0 28px 0;min-height:50px;}
+  .login-footer{font-size:12px;color:var(--ink-light);line-height:1.6;margin-top:20px;}
+  .login-error{color:var(--neg);background:#fff5f5;border:1px solid #f5d4d4;padding:14px 16px;border-radius:8px;margin-bottom:24px;font-size:12px;line-height:1.6;display:none;}
+  .login-error.show{display:block;}
+  .logout-btn{position:fixed;top:20px;right:20px;background:var(--accent);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;z-index:1000;}
+  .logout-btn:hover{background:#0f6e56;}
+  .reports-nav{position:fixed;top:20px;right:110px;z-index:1000;}
+  .reports-btn{background:var(--bg-card);color:var(--ink);border:1px solid var(--border);padding:8px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;font-family:inherit;display:flex;align-items:center;gap:6px;}
+  .reports-btn:hover{background:var(--bg-muted);border-color:var(--accent-mid);}
+  .reports-btn .chev{font-size:9px;opacity:0.7;transition:transform 0.15s;}
+  .reports-btn.open .chev{transform:rotate(180deg);}
+  .reports-menu{position:absolute;top:calc(100% + 6px);right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.08);min-width:220px;max-height:360px;overflow-y:auto;display:none;}
+  .reports-menu.open{display:block;}
+  .reports-menu-header{font-size:10px;color:var(--ink-light);padding:10px 14px 6px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600;}
+  .reports-menu a{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;color:var(--ink);text-decoration:none;font-size:12px;border-top:1px solid var(--border-light);}
+  .reports-menu a:hover{background:var(--bg-muted);}
+  .reports-menu a.current{background:var(--accent-bg);color:var(--accent);font-weight:600;}
+  .reports-menu a .badge{font-size:9px;background:var(--accent);color:#fff;padding:2px 6px;border-radius:3px;font-weight:600;}
+  .reports-menu .empty{padding:12px 14px;font-size:11px;color:var(--ink-light);font-style:italic;}
+  .page{max-width:1320px;margin:0 auto;padding:48px 48px;}
+  .header{margin-bottom:40px;border-bottom:1px solid var(--border);padding-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;}
+  .header-left h1{font-size:22px;font-weight:600;margin-bottom:4px;}
+  .header-left p{font-size:13px;color:var(--ink-light);}
+  .header-right{font-size:12px;color:var(--ink-faint);text-align:right;}
+  .highlight-badge{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:500;padding:3px 10px;border-radius:4px;margin-left:10px;vertical-align:middle;}
+  .section{margin-bottom:48px;}
+  .section-label{font-size:10px;color:var(--ink-light);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+  .metrics4{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-bottom:16px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  .metric{background:var(--bg-card);padding:18px 20px;}
+  .metric.highlight{background:var(--accent-bg);border-left:2px solid var(--accent-mid);}
+  .metric-label{font-size:11px;color:var(--ink-light);margin-bottom:6px;font-weight:500;text-transform:uppercase;letter-spacing:0.04em;}
+  .metric-value{font-size:24px;font-weight:700;line-height:1.05;}
+  .metric-usd{font-size:12px;font-weight:600;margin-top:3px;}
+  .metric-sub{font-size:11px;color:var(--ink-light);margin-top:4px;line-height:1.4;}
+  .green{color:var(--pos);} .red{color:var(--neg);} .blue{color:var(--accent);}
+  .amber{color:var(--warn);} .gray{color:var(--ink-mid);}
+  .charts2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:16px;}
+  .charts2eq{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+  .card-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:14px;text-transform:uppercase;letter-spacing:0.05em;}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px;}
+  .leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-light);}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  table{width:100%;border-collapse:collapse;font-size:11px;}
+  thead th{font-size:10px;color:var(--ink-light);font-weight:600;text-align:right;padding:8px 6px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--bg-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  thead th:first-child{text-align:left;}
+  tbody td{padding:7px 6px;text-align:right;border-bottom:0.5px solid var(--border-light);white-space:nowrap;color:var(--ink);}
+  tbody td:first-child{text-align:left;font-weight:600;}
+  tbody td.left{text-align:left;font-weight:400;white-space:normal;}
+  tbody tr:hover td{background:var(--bg-muted);}
+  tbody tr.total-row td{font-weight:700;background:var(--bg-muted);border-top:1px solid var(--border);border-bottom:none;}
+  .status-pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:0.02em;}
+  .st-resolved{background:#e7f0eb;color:var(--pos);}
+  .st-progress{background:#f7efe0;color:var(--warn);}
+  .st-open{background:#f0f0ee;color:var(--ink-mid);}
+  .note{font-size:11px;color:var(--ink-light);padding:12px 16px;background:var(--bg-muted);border-radius:6px;border-left:2px solid var(--border);line-height:1.7;margin-top:14px;}
+  .month-compare{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+  .month-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;}
+  .month-card.highlight{border:1.5px solid var(--accent-mid);background:var(--accent-bg);}
+  .month-card-title{font-size:11px;font-weight:700;color:var(--ink-mid);margin-bottom:12px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:0.06em;}
+  .month-card-title .badge{background:var(--accent);color:#fff;font-size:8px;padding:2px 6px;border-radius:3px;font-weight:600;letter-spacing:0.06em;}
+  .month-stat{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:0.5px solid var(--border-light);}
+  .month-stat:last-child{border-bottom:none;}
+  .month-stat-label{color:var(--ink-light);}
+  .month-stat-value{font-weight:600;color:var(--ink);}
+  .month-stat-value.green{color:var(--pos);} .month-stat-value.blue{color:var(--accent-mid);}
+  .month-stat-value.amber{color:var(--warn);} .month-stat-value.red{color:var(--neg);} .month-stat-value.gray{color:var(--ink-mid);}
+  .ai-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:22px 26px;margin-bottom:16px;position:relative;overflow:hidden;}
+  .ai-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent);}
+  .ai-card-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .ai-card-icon{width:28px;height:28px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;flex-shrink:0;}
+  .ai-card-title{font-size:13px;font-weight:600;color:var(--ink);}
+  .ai-card-subtitle{font-size:11px;color:var(--ink-light);}
+  .ai-body{font-size:13px;color:var(--ink);line-height:1.8;}
+  .lifecycle{display:flex;align-items:flex-start;gap:0;margin-bottom:14px;overflow-x:auto;padding-bottom:4px;}
+  .lifecycle-step{flex:1;min-width:120px;position:relative;}
+  .lifecycle-step::before{content:'';position:absolute;top:18px;left:50%;width:100%;height:1px;background:var(--border);z-index:0;}
+  .lifecycle-step:last-child::before{display:none;}
+  .lifecycle-dot{width:36px;height:36px;border-radius:50%;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:14px;position:relative;z-index:1;}
+  .lifecycle-label{font-size:10px;font-weight:600;text-align:center;color:var(--ink);margin-bottom:3px;}
+  .lifecycle-sub{font-size:10px;text-align:center;color:var(--ink-light);line-height:1.4;}
+  .lifecycle-time{font-size:9px;text-align:center;color:#b4b2a9;margin-top:3px;font-style:italic;}
+  .glossary-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .glossary-item{background:#faf9f7;border:0.5px solid #e0dfd8;border-radius:8px;padding:12px 14px;}
+  .glossary-term{font-size:11px;font-weight:700;color:#0c447c;margin-bottom:4px;}
+  .glossary-def{font-size:11px;color:#5f5e5a;line-height:1.5;}
+  .divider{border:none;border-top:1px solid var(--border);margin:40px 0;}
+  .footer{font-size:11px;color:var(--ink-faint);text-align:center;padding-top:20px;}
+  @media (max-width:768px){
+    .page{padding:20px 16px;}
+    .header{flex-direction:column;align-items:flex-start;gap:8px;}
+    .header-right{text-align:left;}
+    .metrics4{grid-template-columns:repeat(2,1fr);}
+    .charts2,.charts2eq{grid-template-columns:1fr;}
+    .month-compare{grid-template-columns:1fr;}
+    .metric-value{font-size:20px;}
+    .glossary-grid{grid-template-columns:1fr;}
+    .reports-nav{right:90px;}
+    .reports-btn{padding:6px 10px;font-size:11px;}
+    .logout-btn{padding:6px 12px;font-size:11px;}
+  }
+  @media (max-width:480px){
+    .metrics4{grid-template-columns:1fr;}
+    .metric{padding:14px 16px;}
+  }
+</style>
+</head>
+<body class="login-mode">
+
+<div id="login-screen">
+  <div class="login-container">
+    <span class="login-icon">🔐</span>
+    <h1 class="login-title">Payments Ops Report</h1>
+    <p class="login-subtitle">Week of Jun 22, 2026 · Weekly Report<br>Sign in with your Jeeves account to access</p>
+    <hr class="login-divider">
+    <div id="login-error" class="login-error"></div>
+    <div id="g_id_render"></div>
+    <p class="login-footer">Only @tryjeeves.com accounts can access this report</p>
+  </div>
+</div>
+
+<div id="report-screen">
+  <div class="reports-nav">
+    <button class="reports-btn" id="reports-btn" onclick="toggleReportsMenu()">
+      <span>📅 Reports</span><span class="chev">▼</span>
+    </button>
+    <div class="reports-menu" id="reports-menu">
+      <div class="reports-menu-header">All weekly reports</div>
+      <div id="reports-list"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+  <button class="logout-btn" onclick="logout()">Sign out</button>
+
+  <div class="page">
+
+    <div class="header">
+      <div class="header-left">
+        <h1>Payments Ops Report <span class="highlight-badge">Week of Jun 22 · reporting week</span></h1>
+        <p>Mon Jun 22 – Thu Jun 25, 2026 · Weekly report · #help-paymentops · prior two weeks shown as trend context</p>
+      </div>
+      <div class="header-right">Generated Jun 25, 2026<br>Payments &amp; Cards Ops · Weekly Report<br>Created by Fernanda Haddad</div>
+    </div>
+
+    <div class="ai-card">
+      <div class="ai-card-header">
+        <div class="ai-card-icon">✦</div>
+        <div>
+          <div class="ai-card-title">AI Analysis — Week of Jun 22, 2026</div>
+          <div class="ai-card-subtitle">Based on tickets opened in #help-paymentops · prior weeks as trend reference</div>
+        </div>
+      </div>
+      <div class="ai-body">
+        <p style="margin:0 0 16px">Nine tickets came through the <code>/helpcp</code> flow this week — up from six the prior week. Cross-reading reactions, threads and idle-time puts <strong>5 as verified-resolved</strong> (two confirmed only by a ✔ reaction, which a thread-only read would have missed), 3 still in progress, and 1 needing a status check.</p>
+        <div style="margin-bottom:16px">
+          <div style="margin-bottom:8px">
+            <button onclick="(function(btn){var d=document.getElementById('ai-detail-0');var open=d.style.display==='block';d.style.display=open?'none':'block';btn.style.borderBottomLeftRadius=open?'6px':'0';btn.style.borderBottomRightRadius=open?'6px':'0';})(this)" style="display:inline-flex;align-items:center;gap:8px;background:#f2f1ed;color:#4a4a47;border:1px solid #d8d6cf;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;line-height:1.3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;text-align:left;width:auto">
+              Deposits = 3 of 9 tickets
+              <span style="font-size:10px;opacity:0.6">▾ click for analysis</span>
+            </button>
+            <div id="ai-detail-0" style="display:none;background:#f7f6f3;border:1px solid #d8d6cf;border-top:none;border-radius:0 0 6px 6px;padding:12px 16px;font-size:12px;color:#4a4a47;line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px">
+              Three of nine tickets were deposits not reflecting in the wallet (Lincoterms x2, Importaciones Bloom). Two involved crypto/USDT deposits awaiting on-chain crediting. This mirrors a recurring Bloom pattern seen in prior weeks and points to settlement latency as the structural theme to track, not isolated incidents.
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <button onclick="(function(btn){var d=document.getElementById('ai-detail-1');var open=d.style.display==='block';d.style.display=open?'none':'block';btn.style.borderBottomLeftRadius=open?'6px':'0';btn.style.borderBottomRightRadius=open?'6px':'0';})(this)" style="display:inline-flex;align-items:center;gap:8px;background:#f2f1ed;color:#4a4a47;border:1px solid #d8d6cf;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;line-height:1.3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;text-align:left;width:auto">
+              Cards tickets resolved same-or-next-day
+              <span style="font-size:10px;opacity:0.6">▾ click for analysis</span>
+            </button>
+            <div id="ai-detail-1" style="display:none;background:#f7f6f3;border:1px solid #d8d6cf;border-top:none;border-radius:0 0 6px 6px;padding:12px 16px;font-size:12px;color:#4a4a47;line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px">
+              All three Cards tickets (Wavo transaction issue, SITWIFI &amp; Procaps logistics) reached a resolution within the week — Wavo and Procaps the same day. The open items are concentrated on the Payments side, where resolution depends on external rails (Bridge, RF) outside Jeeves's direct control.
+            </div>
+          </div>
+          <div style="margin-bottom:8px">
+            <button onclick="(function(btn){var d=document.getElementById('ai-detail-2');var open=d.style.display==='block';d.style.display=open?'none':'block';btn.style.borderBottomLeftRadius=open?'6px':'0';btn.style.borderBottomRightRadius=open?'6px':'0';})(this)" style="display:inline-flex;align-items:center;gap:8px;background:#f2f1ed;color:#4a4a47;border:1px solid #d8d6cf;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:500;line-height:1.3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;cursor:pointer;text-align:left;width:auto">
+              4 requests still bypassed the flow
+              <span style="font-size:10px;opacity:0.6">▾ click for analysis</span>
+            </button>
+            <div id="ai-detail-2" style="display:none;background:#f7f6f3;border:1px solid #d8d6cf;border-top:none;border-radius:0 0 6px 6px;padding:12px 16px;font-size:12px;color:#4a4a47;line-height:1.75;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:520px">
+              Promotora Geo, Procaps (initial msg) and PETRADAR were raised as plain messages instead of <code>/helpcp</code> tickets, and got the standard "please use the flow next time" nudge. The channel is still young, so adoption is climbing but not yet universal — worth tracking as a KPI until it's the default.
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#5c3d00;background:#faf5ec;border-left:2px solid #c4a35a;padding:10px 14px;border-radius:0 6px 6px 0;line-height:1.6;font-family:-apple-system,sans-serif">
+          <strong>Watch:</strong> Two Payments tickets are blocked on third-party rails — VMZ Stablecoin (RF internal error, repeated retry failures) and Centerpag (offboarded by Bridge). Both need an external update before they can close.
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Section 1 · Summary — Week of Jun 22, 2026 · reporting week</div>
+
+      <div class="metrics4">
+        <div class="metric highlight">
+          <div class="metric-label">Tickets opened</div>
+          <div class="metric-value blue">9</div>
+          <div class="metric-sub">via /helpcp flow · Mon–Thu</div>
+        </div>
+        <div class="metric highlight">
+          <div class="metric-label">Resolved <span style="font-weight:400;text-transform:none;letter-spacing:0">(verified)</span></div>
+          <div class="metric-value green">5</div>
+          <div class="metric-sub">56% &middot; 2 confirmed by &#10003; reaction</div>
+        </div>
+        <div class="metric highlight">
+          <div class="metric-label">In progress</div>
+          <div class="metric-value amber">4</div>
+          <div class="metric-sub">awaiting external rails</div>
+        </div>
+        <div class="metric highlight">
+          <div class="metric-label">Needs status check</div>
+          <div class="metric-value red">1</div>
+          <div class="metric-sub">stale &gt;3 days &middot; 1 divergence flagged</div>
+        </div>
+      </div>
+
+      <div style="font-size:10px;color:#888780;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;margin-bottom:10px;margin-top:16px">Week-over-week — ticket volume &amp; mix</div>
+      <div class="month-compare">
+        <div class="month-card highlight">
+          <div class="month-card-title">Jun 22–25 <span class="badge">THIS WEEK</span></div>
+          <div class="month-stat"><span class="month-stat-label">Tickets opened</span><span class="month-stat-value blue">9</span></div>
+          <div class="month-stat"><span class="month-stat-label">Payments</span><span class="month-stat-value">6</span></div>
+          <div class="month-stat"><span class="month-stat-label">Cards</span><span class="month-stat-value">3</span></div>
+          <div class="month-stat"><span class="month-stat-label">Resolved (verified)</span><span class="month-stat-value green">5</span></div>
+          <div class="month-stat"><span class="month-stat-label">Needs status check</span><span class="month-stat-value red">1</span></div>
+        </div>
+        <div class="month-card">
+          <div class="month-card-title">Jun 15–21</div>
+          <div class="month-stat"><span class="month-stat-label">Tickets opened</span><span class="month-stat-value">6</span></div>
+          <div class="month-stat"><span class="month-stat-label">Payments</span><span class="month-stat-value">5</span></div>
+          <div class="month-stat"><span class="month-stat-label">Cards</span><span class="month-stat-value">1</span></div>
+          <div class="month-stat"><span class="month-stat-label">Resolved in week</span><span class="month-stat-value green">5</span></div>
+          <div class="month-stat"><span class="month-stat-label">Blocked on partner</span><span class="month-stat-value gray">0</span></div>
+        </div>
+        <div class="month-card">
+          <div class="month-card-title">Jun 8–14</div>
+          <div class="month-stat"><span class="month-stat-label">Tickets opened</span><span class="month-stat-value">3</span></div>
+          <div class="month-stat"><span class="month-stat-label">Payments</span><span class="month-stat-value">3</span></div>
+          <div class="month-stat"><span class="month-stat-label">Cards</span><span class="month-stat-value">0</span></div>
+          <div class="month-stat"><span class="month-stat-label">Resolved in week</span><span class="month-stat-value green">3</span></div>
+          <div class="month-stat"><span class="month-stat-label">Blocked on partner</span><span class="month-stat-value gray">0</span></div>
+        </div>
+      </div>
+
+      <div class="charts2">
+        <div class="card">
+          <div class="card-title">Ticket volume by week</div>
+          <div class="legend">
+            <span class="leg"><span class="dot" style="background:#1a3d6b"></span>Payments</span>
+            <span class="leg"><span class="dot" style="background:#9FE1CB"></span>Cards</span>
+          </div>
+          <div style="position:relative;width:100%;height:220px;"><canvas id="barWeeks"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">This week — status split</div>
+          <div style="position:relative;width:100%;height:220px;"><canvas id="donutStatus"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Section 2 · Ticket detail — Week of Jun 22, 2026</div>
+      <div class="card">
+        <div class="card-title">Every ticket raised this week — status, signals &amp; partner</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket</th><th>Company</th><th>Team</th><th>Category</th><th>Signals</th><th>Verified status</th><th>Resolution / blocker</th><th>Partner</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#184873</td><td class="left">Centerpag</td><td class="left">Payments</td><td class="left">Payouts</td>
+              <td class="left" title="reaction: eyes · thread: investigating · no update 3 days">👀 · 🧵 open · ⏱️</td>
+              <td class="left"><span class="status-pill st-open">Needs check</span></td>
+              <td class="left">Offboarded by Bridge — no update since Jun 22 (stale &gt;3d)</td><td class="left">Bridge</td>
+            </tr>
+            <tr>
+              <td>#184933</td><td class="left">SITWIFI</td><td class="left">Cards</td><td class="left">Logistics</td>
+              <td class="left" title="reaction: done33 (✔) · bot status: Resuelto">✅ · 🧵 done</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved</span></td>
+              <td class="left">Cardholder accepted new card request (~2 days)</td><td class="left">—</td>
+            </tr>
+            <tr>
+              <td>#185155</td><td class="left">Wavo</td><td class="left">Cards</td><td class="left">Transaction issues</td>
+              <td class="left" title="reaction: done33 (✔) · thread resolved">✅ · 🧵 done</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved</span></td>
+              <td class="left">Merchant-side limit, not our block; client allowlisted (same day)</td><td class="left">Merchant</td>
+            </tr>
+            <tr>
+              <td>#185205</td><td class="left">Importaciones Bloom</td><td class="left">Payments</td><td class="left">Issues</td>
+              <td class="left" title="no reaction · thread: amendment pending">— · 🧵 open</td>
+              <td class="left"><span class="status-pill st-progress">In progress</span></td>
+              <td class="left">Beneficiary-name typo in MT103 — SWIFT amendment pending</td><td class="left">SWIFT / bene bank</td>
+            </tr>
+            <tr>
+              <td>#185226</td><td class="left">VMZ Stablecoin</td><td class="left">Payments</td><td class="left">Payouts</td>
+              <td class="left" title="reaction: eyes · thread: RF internal error, retries failing">👀 · 🧵 open</td>
+              <td class="left"><span class="status-pill st-progress">In progress</span></td>
+              <td class="left">Internal RF error — retries failing, escalated to RF</td><td class="left">RF</td>
+            </tr>
+            <tr>
+              <td>#185255</td><td class="left">Lincoterms</td><td class="left">Payments</td><td class="left">Deposits</td>
+              <td class="left" title="reaction: heavy_check_mark (✔) · thread: no explicit close">✅ · 🧵 unclear</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved*</span></td>
+              <td class="left">USDT deposit (~$20k) — marked done by ✔ reaction</td><td class="left">On-chain / Bridge</td>
+            </tr>
+            <tr>
+              <td>#185275</td><td class="left">Importaciones Bloom</td><td class="left">Payments</td><td class="left">Deposits</td>
+              <td class="left" title="reaction: eyes · thread: no replies">👀 · 🧵 none</td>
+              <td class="left"><span class="status-pill st-progress">In progress</span></td>
+              <td class="left">Two deposits not reflected — under review</td><td class="left">On-chain / Bridge</td>
+            </tr>
+            <tr>
+              <td>#185309</td><td class="left">Procaps</td><td class="left">Cards</td><td class="left">Logistics</td>
+              <td class="left" title="reaction: done33 (✔) · thread resolved">✅ · 🧵 done</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved</span></td>
+              <td class="left">Address correction sent; one card delivered (same day)</td><td class="left">Domesa</td>
+            </tr>
+            <tr>
+              <td>#185435</td><td class="left">Lincoterms</td><td class="left">Payments</td><td class="left">Deposits</td>
+              <td class="left" title="reaction: heavy_check_mark (✔) · thread: no explicit close">✅ · 🧵 unclear</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved*</span></td>
+              <td class="left">Binance crypto deposit — marked done by ✔ reaction; DELTA accepted</td><td class="left">On-chain / Bridge</td>
+            </tr>
+            <tr class="total-row">
+              <td>9 tickets</td><td class="left">8 companies</td><td class="left">6 Pay · 3 Cards</td><td class="left">—</td><td class="left">—</td><td class="left">5 resolved · 4 in progress</td><td class="left">—</td><td></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note"><strong>Signals legend:</strong> ✅ = ✔ reaction on the ticket (counts as resolved on its own) &middot; 👀 = seen / acknowledged &middot; 🧵 = thread reading (done / open / unclear / none) &middot; ⏱️ = no activity for 3+ days. <strong>Resolved*</strong> = resolved on reaction signal but the thread never explicitly confirmed — see divergences below.</div>
+        <div class="note" style="margin-top:8px"><strong>Off-flow this week (no ticket created):</strong> Promotora Geo (24921) — physical card not appearing; PETRADAR — cards flagged by fraud for Meta/Google ad spend, <em>resolved same day</em> (Diego added merchant to Facebook whitelist); plus Procaps' first message before the ticket was opened. All three got the standard nudge to use <code>/helpcp</code> next time.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Section 2b · Status verification &amp; divergences</div>
+      <div class="card">
+        <div class="card-title">Where the signals disagree — review these</div>
+        <p style="font-size:12px;color:var(--ink-mid);line-height:1.7;margin-bottom:14px">Each ticket is read from three independent signals — the <strong>✔ reaction</strong> on the post, the <strong>thread conversation</strong>, and a <strong>stale check</strong> (3+ days idle). The verified status reconciles them. The cases below are where they don't fully agree, so a human should confirm before the status is trusted. <span style="color:var(--ink-light)">(Zendesk ticket status will be added here once the n8n sync is live — it becomes the tie-breaker.)</span></p>
+        <table>
+          <thead>
+            <tr><th>Ticket</th><th>Company</th><th>Reaction</th><th>Thread</th><th>Stale?</th><th>Verified</th><th>Why it's flagged</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#185255</td><td class="left">Lincoterms</td><td class="left">✔ done</td><td class="left">no explicit close</td><td class="left">no</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved*</span></td>
+              <td class="left">Marked done by reaction, but nobody wrote a closing confirmation in the thread. Likely resolved — worth a one-line confirm.</td>
+            </tr>
+            <tr>
+              <td>#185435</td><td class="left">Lincoterms</td><td class="left">✔ done</td><td class="left">1 reply, no close</td><td class="left">no</td>
+              <td class="left"><span class="status-pill st-resolved">Resolved*</span></td>
+              <td class="left">Same pattern — ✔ reaction without a written wrap-up. Confirm the deposit was actually credited.</td>
+            </tr>
+            <tr>
+              <td>#184873</td><td class="left">Centerpag</td><td class="left">👀 only</td><td class="left">investigating</td><td class="left">⏱️ 3d</td>
+              <td class="left"><span class="status-pill st-open">Needs check</span></td>
+              <td class="left">No update since Jun 22. Either still blocked on Bridge or resolved off-Slack and never closed. Ping the owner.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="note"><strong>Why this matters:</strong> the agent who fixes a case doesn't always remember to close the ticket or write a status in Slack. Cross-reading reaction + thread + idle-time catches the cases that would otherwise look permanently "in progress" (or get closed with no trace). Adding the live Zendesk status via n8n will make this airtight.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Section 3 · Breakdown by category &amp; team</div>
+      <div class="charts2eq">
+        <div class="card">
+          <div class="card-title">Tickets by category</div>
+          <div style="position:relative;width:100%;height:260px;"><canvas id="donutCat"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Category split — this week</div>
+          <table>
+            <thead><tr><th>Category</th><th>Team</th><th>Tickets</th><th>%</th></tr></thead>
+            <tbody>
+              <tr><td>Deposits</td><td class="left">Payments</td><td>3</td><td>33%</td></tr>
+              <tr><td>Payouts</td><td class="left">Payments</td><td>2</td><td>22%</td></tr>
+              <tr><td>Logistics</td><td class="left">Cards</td><td>2</td><td>22%</td></tr>
+              <tr><td>Issues</td><td class="left">Payments</td><td>1</td><td>11%</td></tr>
+              <tr><td>Transaction issues</td><td class="left">Cards</td><td>1</td><td>11%</td></tr>
+              <tr class="total-row"><td>Total</td><td class="left">—</td><td>9</td><td>100%</td></tr>
+            </tbody>
+          </table>
+          <div class="note">Payments drove two-thirds of volume (6/9), led by deposit-crediting delays. Cards volume (3/9) was logistics and a merchant-side transaction limit — all resolved within the week.</div>
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Section 4 · How a request flows — lifecycle &amp; timelines</div>
+      <div class="card">
+        <div class="card-title">From Slack request to resolution</div>
+        <div class="lifecycle">
+          <div class="lifecycle-step">
+            <div class="lifecycle-dot" style="background:#f1efe8;border:2px solid #b4b2a9;">📝</div>
+            <div class="lifecycle-label">Request raised</div>
+            <div class="lifecycle-sub">/helpcp form in #help-paymentops</div>
+            <div class="lifecycle-time">Minute 0</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lifecycle-dot" style="background:#eef4fb;border:2px solid #378ADD;">🎫</div>
+            <div class="lifecycle-label">Ticket created</div>
+            <div class="lifecycle-sub">Auto-routed to Zendesk + owner tagged</div>
+            <div class="lifecycle-time">Automatic</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lifecycle-dot" style="background:#f7efe0;border:2px solid #EF9F27;">🔍</div>
+            <div class="lifecycle-label">Triage</div>
+            <div class="lifecycle-sub">Owner reviews; checks CMS / Sardine / rails</div>
+            <div class="lifecycle-time">Same day</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lifecycle-dot" style="background:#eef4fb;border:2px solid #378ADD;">🤝</div>
+            <div class="lifecycle-label">Action / partner</div>
+            <div class="lifecycle-sub">Internal fix or escalate to Bridge / RF / SWIFT</div>
+            <div class="lifecycle-time">0–3 days</div>
+          </div>
+          <div class="lifecycle-step">
+            <div class="lifecycle-dot" style="background:#e7f0eb;border:2px solid #1D9E75;">✅</div>
+            <div class="lifecycle-label">Resolved</div>
+            <div class="lifecycle-sub">Status updated in thread + Zendesk</div>
+            <div class="lifecycle-time">Same day–few days</div>
+          </div>
+        </div>
+        <div class="note">Cards tickets this week closed same-day to ~2 days. Payments tickets that depend on external rails (Bridge, RF, SWIFT) stay in progress until the partner responds — the main driver of the open items. One (Centerpag) has been idle 3+ days and is flagged for a status check.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="section">
+      <div class="section-label">Section 5 · Glossary</div>
+      <div class="card">
+        <div class="card-title">Key terms explained</div>
+        <div class="glossary-grid">
+          <div class="glossary-item"><div class="glossary-term">/helpcp</div><div class="glossary-def">Slack slash command that opens the request form. Each submission becomes a Zendesk ticket auto-routed to the right owner.</div></div>
+          <div class="glossary-item"><div class="glossary-term">Deposit not reflected</div><div class="glossary-def">Funds sent by the client haven't yet appeared in the Jeeves wallet — usually settlement/on-chain latency rather than a lost transaction.</div></div>
+          <div class="glossary-item"><div class="glossary-term">Payout</div><div class="glossary-def">Money leaving the client's wallet to a supplier or beneficiary (wire/SWIFT, fiat or stablecoin conversion).</div></div>
+          <div class="glossary-item"><div class="glossary-term">Bridge</div><div class="glossary-def">Stablecoin payments partner. "Offboarded by Bridge" means the partner deactivated the client and Jeeves must request reactivation.</div></div>
+          <div class="glossary-item"><div class="glossary-term">RF</div><div class="glossary-def">Payments rail/processor used for certain payouts. An "internal RF error" is a fault on the partner's side, not Jeeves's.</div></div>
+          <div class="glossary-item"><div class="glossary-term">MT103</div><div class="glossary-def">The SWIFT message for a cross-border wire. A typo in the beneficiary name can block crediting and require a formal amendment.</div></div>
+          <div class="glossary-item"><div class="glossary-term">Allowlist</div><div class="glossary-def">Marking a client/merchant as trusted so legitimate, recurring transactions aren't blocked by fraud or "unusual activity" rules.</div></div>
+          <div class="glossary-item"><div class="glossary-term">DELTA</div><div class="glossary-def">Acceptable price variance on a stablecoin deposit. When the client accepts DELTA, deposits can be auto-credited without holding for price checks.</div></div>
+          <div class="glossary-item"><div class="glossary-term">Logistics (cards)</div><div class="glossary-def">Physical card production and delivery — printing, shipping (e.g. Domesa), address corrections and "pending" card requests.</div></div>
+          <div class="glossary-item"><div class="glossary-term">Off-flow request</div><div class="glossary-def">A request typed as a normal Slack message instead of through /helpcp, so no ticket is auto-created and there's no audit trail.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Payments Ops Report · Week of Jun 22, 2026 · #help-paymentops · Cards &amp; Payments Ops</div>
+  </div>
+</div>
+
+<script>
+  const CLIENT_ID = 'PASTE_GOOGLE_CLIENT_ID_HERE'; // copy from disputes-report/index.html — same @tryjeeves OAuth
+  const ALLOWED_DOMAIN = '@tryjeeves.com';
+  const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
+  const AUTH_KEY = 'jeeves_paymentops_auth';
+  const REPORTS_REPO = 'fernandah-tryjeeves/help-paymentops-report';
+  const REPORTS_BASE_PATH = '/help-paymentops-report/';
+  const CURRENT_REPORT_FILENAME = '2026-06-22.html';
+
+  function saveAuth(token, email){ try{ localStorage.setItem(AUTH_KEY, JSON.stringify({token,email,expiresAt:Date.now()+AUTH_TTL_MS})); }catch(e){} }
+  function readAuth(){
+    try{
+      const raw = localStorage.getItem(AUTH_KEY); if(!raw) return null;
+      const data = JSON.parse(raw);
+      if(!data||!data.email||!data.expiresAt) return null;
+      if(Date.now()>data.expiresAt){ localStorage.removeItem(AUTH_KEY); return null; }
+      if(!data.email.endsWith(ALLOWED_DOMAIN)){ localStorage.removeItem(AUTH_KEY); return null; }
+      return data;
+    }catch(e){ return null; }
+  }
+  function clearAuth(){ try{ localStorage.removeItem(AUTH_KEY); }catch(e){} }
+  function handleCredentialResponse(response){
+    const token = response.credential;
+    if(!token){ showError('Unable to decode token. Please try again.'); return; }
+    try{
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(c=>'%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+      const decoded = JSON.parse(jsonPayload);
+      if(!decoded.email||!decoded.email.endsWith(ALLOWED_DOMAIN)){ showError('Access denied. Only '+ALLOWED_DOMAIN+' accounts are allowed.'); return; }
+      saveAuth(token, decoded.email); showReport();
+    }catch(err){ showError('Invalid token format. Please try again.'); }
+  }
+  function checkExistingAuth(){ if(readAuth()) showReport(); else showLogin(); }
+  function initGoogleSignIn(){
+    if(typeof google==='undefined'||!google.accounts){ setTimeout(initGoogleSignIn,500); return; }
+    if(!CLIENT_ID){ return; }
+    google.accounts.id.initialize({client_id:CLIENT_ID, callback:handleCredentialResponse, ux_mode:'popup'});
+    const c = document.getElementById('g_id_render');
+    if(c) google.accounts.id.renderButton(c,{theme:'outline',size:'large',text:'signin_with'});
+  }
+  function showLogin(){ document.body.classList.remove('report-mode'); document.body.classList.add('login-mode'); }
+  function showReport(){ document.body.classList.remove('login-mode'); document.body.classList.add('report-mode'); setTimeout(initCharts,100); loadReportsList(); }
+  function showError(msg){ const e=document.getElementById('login-error'); if(e){ e.textContent=msg; e.classList.add('show'); } }
+  function logout(){ clearAuth(); if(window.google&&window.google.accounts) google.accounts.id.disableAutoSelect(); showLogin(); }
+
+  function toggleReportsMenu(){
+    const btn=document.getElementById('reports-btn'); const menu=document.getElementById('reports-menu');
+    const isOpen=menu.classList.contains('open');
+    if(isOpen){ menu.classList.remove('open'); btn.classList.remove('open'); }
+    else{ menu.classList.add('open'); btn.classList.add('open'); }
+  }
+  document.addEventListener('click', function(e){
+    const nav=document.querySelector('.reports-nav');
+    if(nav&&!nav.contains(e.target)){
+      const m=document.getElementById('reports-menu'); const b=document.getElementById('reports-btn');
+      if(m) m.classList.remove('open'); if(b) b.classList.remove('open');
+    }
+  });
+  function loadReportsList(){
+    const listEl=document.getElementById('reports-list');
+    if(!listEl) return;
+    listEl.innerHTML='<a href="#" class="current">This week (Jun 22) <span class="badge">YOU ARE HERE</span></a>';
+    listEl.dataset.loaded='1';
+  }
+
+  function initCharts(){
+    const OPTS={responsive:true,maintainAspectRatio:false};
+    const gridY={color:'rgba(0,0,0,0.05)'};
+    const tickSm={font:{size:10}};
+
+    new Chart(document.getElementById('barWeeks'),{
+      type:'bar',
+      data:{ labels:['Jun 8–14','Jun 15–21','Jun 22–25'],
+        datasets:[
+          {label:'Payments',data:[3,5,6],backgroundColor:'#1a3d6b'},
+          {label:'Cards',data:[0,1,3],backgroundColor:'#9FE1CB'}
+        ]},
+      options:Object.assign({},OPTS,{
+        scales:{x:{stacked:true,ticks:tickSm,grid:{display:false}},y:{stacked:true,beginAtZero:true,ticks:tickSm,grid:gridY}},
+        plugins:{legend:{display:false}}
+      })
+    });
+
+    new Chart(document.getElementById('donutStatus'),{
+      type:'doughnut',
+      data:{ labels:['Resolved (verified)','In progress','Needs status check'],
+        datasets:[{data:[5,3,1],backgroundColor:['#1D9E75','#EF9F27','#E24B4A'],borderWidth:0}]},
+      options:Object.assign({},OPTS,{cutout:'62%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,boxHeight:10}}}})
+    });
+
+    new Chart(document.getElementById('donutCat'),{
+      type:'doughnut',
+      data:{ labels:['Deposits','Payouts','Logistics','Issues','Transaction issues'],
+        datasets:[{data:[3,2,2,1,1],backgroundColor:['#1a3d6b','#2d5a8e','#9FE1CB','#EF9F27','#378ADD'],borderWidth:0}]},
+      options:Object.assign({},OPTS,{cutout:'58%',plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:10,boxHeight:10}}}})
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    checkExistingAuth();
+    initGoogleSignIn();
+  });
+</script>
+</body>
+</html>
