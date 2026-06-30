@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Payments Ops Report — Week of Jun 22, 2026</title>
-<script async defer src="https://accounts.google.com/gsi/client"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -141,19 +140,7 @@
   }
 </style>
 </head>
-<body class="login-mode">
-
-<div id="login-screen">
-  <div class="login-container">
-    <span class="login-icon">🔐</span>
-    <h1 class="login-title">Payments Ops Report</h1>
-    <p class="login-subtitle">Week of Jun 22, 2026 · Weekly Report<br>Sign in with your Jeeves account to access</p>
-    <hr class="login-divider">
-    <div id="login-error" class="login-error"></div>
-    <div id="g_id_render"></div>
-    <p class="login-footer">Only @tryjeeves.com accounts can access this report</p>
-  </div>
-</div>
+<body class="report-mode">
 
 <div id="report-screen">
   <div class="reports-nav">
@@ -165,7 +152,6 @@
       <div id="reports-list"><div class="empty">Loading…</div></div>
     </div>
   </div>
-  <button class="logout-btn" onclick="logout()">Sign out</button>
 
   <div class="page">
 
@@ -501,8 +487,8 @@
   const ALLOWED_DOMAIN = '@tryjeeves.com';
   const AUTH_TTL_MS = 24 * 60 * 60 * 1000;
   const AUTH_KEY = 'jeeves_paymentops_auth';
-  const REPORTS_REPO = 'fernandah-tryjeeves/help-paymentops-report';
-  const REPORTS_BASE_PATH = '/help-paymentops-report/';
+  const REPORTS_REPO = 'JeevesInc/helpcpops-report';
+  const REPORTS_BASE_PATH = '/helpcpops-report/';
   const CURRENT_REPORT_FILENAME = '';
 
   function saveAuth(token, email){ try{ localStorage.setItem(AUTH_KEY, JSON.stringify({token,email,expiresAt:Date.now()+AUTH_TTL_MS})); }catch(e){} }
@@ -596,8 +582,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', function(){
-    checkExistingAuth();
-    initGoogleSignIn();
+    setTimeout(initCharts,100);
+    loadReportsList();
   });
 </script>
 </body>
